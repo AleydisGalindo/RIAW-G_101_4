@@ -11,10 +11,6 @@ This Python script performs exploratory data analysis (EDA) on a collection of t
 
 # Install NLTK for natural language processing
 ```bash
-pip install nltk 
-```
-# Install NLTK for natural language processing
-```bash
 pip install nltk
 ```
 
