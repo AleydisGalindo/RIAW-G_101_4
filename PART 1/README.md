@@ -1,4 +1,4 @@
-# Exploratory Data Analysis and Entity Recognition in Tweets
+# Part1: Text Processing and Exploratory Data Analysis
 
 ## Overview
 
