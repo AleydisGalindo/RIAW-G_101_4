@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="center-container">
+        <form class="form-container" method="POST" onSubmit='return validate();' action="/search">
+            <!-- Algorithm selection inputs -->
+            <div>
+                <label for="tfidf">TF-IDF</label>
+                <input type="radio" id="tfidf" name="algorithm" value="TF_IDF" checked>
+                
+                <label for="custom">CUSTOM</label>
+                <input type="radio" id="custom" name="algorithm" value="CUSTOM">
+                
+                <label for="tweet2vec">Tweet2Vec</label>
+                <input type="radio" id="tweet2vec" name="algorithm" value="Tweet2Vec">
+            </div>
+
+            <!-- Search input/button section -->
+            <div style="margin-top: 40px; display: flex; align-items: center;">
+                <input class="form-control me-2" name="search-query" type="search" placeholder="Search" aria-label="Search"
+                    style="flex: 1; height: 40px;" autofocus="autofocus">
+                <button class="btn btn-primary" type="submit" onclick='this.form.submit();'>Search</button>
+                <input name="upf-irwa-hidden" type="hidden" value="123">
+            </div>
+        </form>
+    </div>
+
+    <style>
+        .center-container {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .form-container {
+            width: 300px;
+            margin: 20px auto;
+        }
+    </style>
+{% endblock %}
