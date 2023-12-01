@@ -3,7 +3,9 @@ from json import JSONEncoder
 from collections import defaultdict
 from collections import Counter
 from user_agents import parse
-from geopy.geocoders import Nominatim
+# from geopy.geocoders import Nominatim
+import requests
+# import geoip2.database
 
 # pip install httpagentparser
 import httpagentparser  # for getting the user agent as json
@@ -11,6 +13,9 @@ import nltk
 import pickle
 from flask import Flask, render_template, session
 from flask import request
+from datetime import datetime, timedelta
+import pytz
+import numpy as np
 
 from myapp.analytics.analytics_data import AnalyticsData, ClickedDoc
 from myapp.search.load_corpus import load_corpus, _build_terms
@@ -110,8 +115,7 @@ def search_form_post():
 
     print(session)
 
-    return render_template('results.html', results_list=results, page_title="Results", found_counter=found_count)
-
+    return render_template('results.html', results_list=results, page_title="Results", query=search_query, found_counter=found_count, algorithm=selected_algorithm)
 
 @app.route('/doc_details', methods=['GET'])
 def doc_details():
@@ -128,98 +132,173 @@ def doc_details():
     # get the query string parameters from request
     clicked_doc_id = request.args["id"]
     algorithm = session['last_algorithm']
+    query = session['last_search_query']
     query_terms = _build_terms(session['last_search_query'])
+
     user_agent = request.headers.get('User-Agent')
     agent = httpagentparser.detect(user_agent)
     browser = agent['browser']['name']
+    platform = agent['platform']['name']
+    os = agent['os']['name']
+    bot = agent['bot']
+    user_ip = request.remote_addr
 
     doc = corpus[int(clicked_doc_id)]
-    p1 = int(request.args["search_id"])  # transform to Integer
-    p2 = int(request.args["param2"])  # transform to Integer
     print("click in id={}".format(clicked_doc_id))
 
+    def check_in(dictionary, subkey):
+        if subkey in dictionary.keys(): dictionary[subkey] += 1
+        else: dictionary[subkey] = 1
+
     # store data in statistics table 1
-    if clicked_doc_id in analytics_data.fact_clicks.keys():
-        analytics_data.fact_clicks[clicked_doc_id] += 1
-    else:
-        analytics_data.fact_clicks[clicked_doc_id] = 1
+    if clicked_doc_id in analytics_data.fact_clicks.keys(): check_in(analytics_data.fact_clicks[clicked_doc_id], query)
+    else: analytics_data.fact_clicks[clicked_doc_id] = {query: 1}
 
-    print("fact_clicks count for id={} is {}".format(clicked_doc_id, analytics_data.fact_clicks[clicked_doc_id]))
+    if clicked_doc_id in analytics_data.fact_clicks_stats.keys(): check_in(analytics_data.fact_clicks_stats[clicked_doc_id], query)
+    else: analytics_data.fact_clicks_stats[clicked_doc_id] = {query: 1}
 
+    total_sum = sum(analytics_data.fact_clicks.get(clicked_doc_id, {}).values())
+
+    print("fact_clicks count for id={} is {}".format(clicked_doc_id, total_sum))
+    
     # store data in statistics table 2
-    if algorithm in analytics_data.fact_algorithms.keys():
-        analytics_data.fact_algorithms[algorithm] += 1
-    else:
-        analytics_data.fact_algorithms[algorithm] = 1
+    check_in(analytics_data.fact_algorithms, algorithm)
+    check_in(analytics_data.fact_algorithms_stats, algorithm)
+
 
     print("fact_algorithms count for algorithm={} is {}".format(algorithm, analytics_data.fact_algorithms[algorithm]))
 
     # store data in statistics table 3
     for term in query_terms:
-        if term in analytics_data.fact_terms.keys():
-            analytics_data.fact_terms[term] += 1
-        else:
-            analytics_data.fact_terms[term] = 1
-
+        check_in(analytics_data.fact_terms, term)
+        check_in(analytics_data.fact_terms_stats, term)
+    
     print("fact_terms count for term={} is {}".format(term, analytics_data.fact_terms[term]))
 
-    # store data in statistics table 4
-    if browser in analytics_data.fact_browsers.keys():
-        analytics_data.fact_browsers[browser] += 1
-    else:
-        analytics_data.fact_browsers[browser] = 1
 
-    print("fact_browser count for term={} is {}".format(browser, analytics_data.fact_browsers[browser]))
+    # store data in statistics table 4
+    if 'platforms' in analytics_data.fact_agents.keys(): check_in(analytics_data.fact_agents['platforms'], platform)
+    else: analytics_data.fact_agents['platforms'] = {platform: 1}
+
+    if 'oss' in analytics_data.fact_agents.keys(): check_in(analytics_data.fact_agents['oss'], os)
+    else: analytics_data.fact_agents['oss'] = {os: 1} 
+
+    if 'browsers' in analytics_data.fact_agents.keys(): check_in(analytics_data.fact_agents['browsers'], browser)
+    else: analytics_data.fact_agents['browsers'] = {browser: 1} 
+
+    if 'bot' in analytics_data.fact_agents.keys(): check_in(analytics_data.fact_agents['bot'], bot)
+    else: analytics_data.fact_agents['bot'] = {bot: 1}
+
+    if 'platforms' in analytics_data.fact_agents_stats.keys(): check_in(analytics_data.fact_agents_stats['platforms'], platform)
+    else: analytics_data.fact_agents_stats['platforms'] = {platform: 1}
+
+    if 'oss' in analytics_data.fact_agents_stats.keys(): check_in(analytics_data.fact_agents_stats['oss'], os)
+    else: analytics_data.fact_agents_stats['oss'] = {os: 1} 
+
+    if 'browsers' in analytics_data.fact_agents_stats.keys(): check_in(analytics_data.fact_agents_stats['browsers'], browser)
+    else: analytics_data.fact_agents_stats['browsers'] = {browser: 1} 
+
+    if 'bot' in analytics_data.fact_agents_stats.keys(): check_in(analytics_data.fact_agents_stats['bot'], bot)
+    else: analytics_data.fact_agents_stats['bot'] = {bot: 1}
+
+
+    # store data in statistics table 5
+    check_in(analytics_data.fact_ip, user_ip)
+    check_in(analytics_data.fact_ip_stats, user_ip)
+
+    print("fact_ip count for term={} is {}".format(browser, analytics_data.fact_ip[user_ip]))
+
+    # store data in statistics table 6
+    terms_per_query = len(query_terms)
+    check_in(analytics_data.fact_query_sizes, terms_per_query)
+    check_in(analytics_data.fact_query_sizes_stats, terms_per_query)
+
+    print("fact_query_sizes count for size={} is {}".format(terms_per_query, analytics_data.fact_query_sizes[terms_per_query]))
+
+    # store data in statistics table 7
+    response = requests.get(f"https://ipinfo.io/{user_ip}/json")
+    data = response.json()
+    visitor_city = data.get("city", "Unknown (private or local address)")
+    check_in(analytics_data.fact_city, visitor_city)
+    check_in(analytics_data.fact_city_stats, visitor_city)
+
+    print("fact_city count for size={} is {}".format(visitor_city, analytics_data.fact_city[visitor_city]))
+
+    # store data in statistics table 8
+    click_timestamp = datetime.now(pytz.utc)
+    if 'last_click_timestamp' in session:
+        last_click_timestamp = session['last_click_timestamp']
+        last_click_timestamp = last_click_timestamp.replace(tzinfo=pytz.utc)
+
+        dwell_time = (click_timestamp - last_click_timestamp).total_seconds()
+
+        check_in(analytics_data.fact_dwell_time, dwell_time)
+        analytics_data.fact_dwell_time[dwell_time] = dwell_time
+
+        check_in(analytics_data.fact_dwell_time_stats, dwell_time)
+        analytics_data.fact_dwell_time_stats[dwell_time] = dwell_time
+
+        print("Dwell time: {} seconds (bin {})".format(dwell_time, analytics_data.fact_dwell_time))
+
+    session['last_click_timestamp'] = click_timestamp
+
+    # store data in statistics table 9
+    interaction_day = click_timestamp.strftime('%A')
+    check_in(analytics_data.fact_week_days, interaction_day)
+    check_in(analytics_data.fact_week_days_stats, interaction_day)
+
+
+    print("Day of the week: {} (Count: {})".format(interaction_day, analytics_data.fact_week_days[interaction_day]))
+
+    data = {'fact_clicks': analytics_data.fact_clicks, 'fact_algorithms': analytics_data.fact_algorithms, 
+            'fact_terms': analytics_data.fact_terms, 'fact_agents': analytics_data.fact_agents, 'fact_ip': analytics_data.fact_ip, 
+            'fact_query_sizes': analytics_data.fact_query_sizes, 'fact_city': analytics_data.fact_city, 
+            'fact_dwell_time': analytics_data.fact_dwell_time, 'fact_week_days': analytics_data.fact_week_days}
+    
+    with open('dashboard_data.pkl', 'wb') as file:
+        pickle.dump(data, file) 
 
     return render_template('doc_details.html', doc=doc, page_title="Tweet information")
 
 
 @app.route('/stats', methods=['GET'])
 def stats():
-    """
-    Show simple statistics example. ### Replace with dashboard ###
-    :return:
-    """
+    visited_docs_stats = []
 
-    docs = []
-    # ### Start replace with your code ###
-
-    for doc_id in analytics_data.fact_clicks:
-        row: Document = corpus[int(doc_id)]
-        count = analytics_data.fact_clicks[doc_id]
-        doc = StatsDocument(row.id, row.title, row.description, row.doc_date, row.url, count)
-        docs.append(doc)
+    for doc_id in analytics_data.fact_clicks_stats.keys():
+        d: Document = corpus[int(doc_id)]
+        count = sum(analytics_data.fact_clicks_stats.get(doc_id, {}).values())
+        doc = ClickedDoc(doc_id, d.description, count)
+        visited_docs_stats.append(doc)
 
     # simulate sort by ranking
-    docs.sort(key=lambda doc: doc.count, reverse=True)
-    return render_template('stats.html', clicks_data=docs)
-    # ### End replace with your code ###
+    visited_docs_stats.sort(key=lambda doc: doc.counter, reverse=True)
+    visited_docs_json_stats = [doc.to_json() for doc in visited_docs_stats]
+    
+    return render_template('stats.html', session=session, visited_docs=visited_docs_json_stats, query_data=analytics_data.fact_algorithms_stats, 
+                           term_data=analytics_data.fact_terms_stats, query_docs=analytics_data.fact_clicks_stats, agent_data=analytics_data.fact_agents_stats, 
+                           users_ip=analytics_data.fact_ip_stats, query_size_data=analytics_data.fact_query_sizes_stats, cities=analytics_data.fact_city_stats, 
+                           dwell_times=analytics_data.fact_dwell_time_stats, week_days=analytics_data.fact_week_days_stats) 
 
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     visited_docs = []
-    print(analytics_data.fact_clicks.keys())
-    print(analytics_data.fact_algorithms.keys())
-    print(analytics_data.fact_terms.keys())
+
     for doc_id in analytics_data.fact_clicks.keys():
         d: Document = corpus[int(doc_id)]
-        doc = ClickedDoc(doc_id, d.description, analytics_data.fact_clicks[doc_id])
+        count = sum(analytics_data.fact_clicks.get(doc_id, {}).values())
+        doc = ClickedDoc(doc_id, d.description, count)
         visited_docs.append(doc)
 
     # simulate sort by ranking
     visited_docs.sort(key=lambda doc: doc.counter, reverse=True)
     visited_docs_json = [doc.to_json() for doc in visited_docs]
     
-
-    #Visitor's city from IP
-    # user_ip = request.remote_addr
-    # geolocator = Nominatim(user_agent="web_app")
-    # location = geolocator.geocode(user_ip)
-    # visitor_city = location.address.split(",")[-3] if location else "Unknown"
-
-    # for doc in visited_docs: print(doc)
-    return render_template('dashboard.html', visited_docs=visited_docs_json, preferred_browser=analytics_data.fact_browsers, query_data=analytics_data.fact_algorithms, term_data=analytics_data.fact_terms) #visitor_city
+    return render_template('dashboard.html', session=session, visited_docs=visited_docs_json, query_data=analytics_data.fact_algorithms, 
+                           term_data=analytics_data.fact_terms, query_docs=analytics_data.fact_clicks, agent_data=analytics_data.fact_agents, 
+                           users_ip=analytics_data.fact_ip, query_size_data=analytics_data.fact_query_sizes, cities=analytics_data.fact_city, 
+                           dwell_times=analytics_data.fact_dwell_time, week_days=analytics_data.fact_week_days) 
 
 
 @app.route('/sentiment')

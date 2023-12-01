@@ -1,7 +1,16 @@
 {% extends "base.html" %}
 {% block page_title %}{{ page_title }}{% endblock %}
 {% block content %}
-    Found <strong>{{ found_counter }}</strong> results...
+    <div style="margin-top: 40px; display: flex; align-items: center;">
+        <form class="form-container" method="POST" onSubmit='return validate();' action="/search">
+            <input class="form-control me-2" name="search-query" type="search" placeholder="Search" aria-label="Search"
+                style="flex: 1; height: 40px;" autofocus="autofocus">
+            <button class="btn btn-primary" type="submit" onclick='this.form.submit();'>Search</button>
+            <input name="upf-irwa-hidden" type="hidden" value="123">
+            <input type="hidden" name="algorithm" value="{{ algorithm }}"">
+        </form>
+    </div>
+    Found <strong>{{ found_counter }}</strong> results for query <strong>{{ query }}</strong>
     <hr>
     {% for item in results_list %}
         <div class="pb-3">
@@ -20,4 +29,3 @@
 
     {% endfor %}
 {% endblock %}
-

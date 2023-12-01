@@ -1,15 +1,312 @@
 {% extends "base.html" %}
 {% block page_title %}{{ page_title }}{% endblock %}
-{% block content %}
-    <h2>Quick Stats</h2>
-    <h4>Clicked docs:</h4>
 
-    {% for doc in clicks_data %}
+{% block header %}
+    <!-- Next tag loads Charts.js https://www.chartjs.org/docs/latest/ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.2/chart.min.js"
+            integrity="sha512-tMabqarPtykgDtdtSqCL3uLVM0gS1ZkUAVhRFu1vSEFgvB73niFQWJuvviDyBGBH22Lcau4rHB5p2K2T0Xvr6Q=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+{% endblock %}
+
+{% block content %}
+
+<h2>Accumulated statistics in this current session</h2>
+
+    <!--
+    Examples of what to show in Dashboard:
+
+    - Ranking of visited documents (from results page)
+    - Visitor's preferred browsers
+    - Visitor's city (from IP)
+    - preferred queries ranking
+    - preferred terms
+    - etc.
+
+    -->
+    
+    <script>
+        // 'visited_docs' is the data coming from Python code.
+        // load the python list in the JS variable 'visits_list':
+        const visits_list = {{ visited_docs | tojson | safe }};
+        console.log("visited docs: ");
+        console.log(visits_list);
+    </script>
+
+    <h5>Ranking of Visited Documents</h5>
+    <canvas id="dailyVisits" width="400" height="400"></canvas>
+
+    <script>
+        const queryDocs = {{ query_docs | tojson | safe }};
+        const queryDLabels = Object.keys(queryDocs);
+        const queryDCount = Object.values(queryDocs);
+        // use JS map function top get just the tweet ids as labels
+        const visitsLabels = visits_list.map(a => "id: " + a.doc_id);
+        const visitsData = visits_list.map(a => a.counter);
+        const visit_chart_data = {
+            labels: visitsLabels,
+            datasets: [{
+                label: 'Visits count',
+                data: visitsData,
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        };
+
+        const ctx = document.getElementById('dailyVisits').getContext('2d');
+
+        // This will render the chart
+        const visit_chart = new Chart(ctx, {
+            type: 'line',
+            data: visit_chart_data,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+    </script>
+    
+    <hr>
+    <h5>Print Python data for verification with graph above...</h5>
+    {% for doc in visited_docs %}
         <div class="pb-3">
             <div class="">
-                <span class="text-dark"> ({{ doc.count }} visits) </span> — id: {{ doc.id }} — {{ doc.description }}
+                <span class="text-dark"> <strong></strong>({{ doc.counter }} visits)</strong> </span> — id: {{ doc.doc_id }}
+                — {{ doc.description }}
+            </div>
+            <div class="mt-2">
+                <strong>Visits per Query:</strong>
+                {% if query_docs and doc.doc_id in query_docs %}
+                    {% for query, query_counter in query_docs[doc.doc_id].items() %}
+                        <div>{{ query }}: {{ query_counter }} visits</div>
+                    {% endfor %}
+                {% else %}
+                    <div>No queries found for this document</div>
+                {% endif %}
             </div>
         </div>
-        <hr>
     {% endfor %}
+
+    <hr>
+    <h5>Distribution of Algorithms Used</h5>
+    <canvas id="queryChart" width="400" height="400"></canvas>
+    <script>
+        // Display a bar chart for preferred queries ranking
+        const queryData = {{ query_data | tojson | safe }};
+        const queryLabels = Object.keys(queryData);
+        const queryCount = Object.values(queryData);
+
+        const query_chart = new Chart(document.getElementById("queryChart"), {
+            type: 'pie',
+            data: {
+                labels: queryLabels,
+                datasets: [{
+                    label: 'Query Frequency',
+                    data: queryCount,
+                    backgroundColor: ['green', 'red', 'blue'],
+                }]
+            },
+        });
+    </script>
+
+    <hr>
+    <h5>Frequency of Query Size</h5>
+    <canvas id="querySizeChart" width="400" height="400"></canvas>
+    <script>
+        // Display a bar chart for the number of terms per query
+        const querySizeData = {{ query_size_data | tojson | safe }};
+        const querySizeLabels = Object.keys(querySizeData);
+        const querySizeCount = Object.values(querySizeData);
+
+        const query_size_chart = new Chart(document.getElementById("querySizeChart"), {
+            type: 'bar',
+            data: {
+                labels: querySizeLabels,
+                datasets: [{
+                    label: 'Frequency',
+                    data: querySizeCount,
+                    backgroundColor: 'purple',
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Terms per query'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <hr>
+    <h5>Frequency of Term appearance</h5>
+    <canvas id="termChart" width="400" height="400"></canvas>
+    <script>
+        // Display a bar chart for preferred terms ranking
+        const termData = {{ term_data | tojson | safe }};
+        const termLabels = Object.keys(termData);
+        const termCount = Object.values(termData);
+
+        const term_chart = new Chart(document.getElementById("termChart"), {
+            type: 'bar',
+            data: {
+                labels: termLabels,
+                datasets: [{
+                    label: 'Term Frequency',
+                    data: termCount,
+                    backgroundColor: 'orange', 
+                }]
+            },
+        });
+    </script>
+
+    <hr>
+    <h5>Mean of dwell time</h5>
+    <script>
+        // Get the dwell time values from the provided dictionary
+        var dwellTimes = Object.values({{ dwell_times | tojson | safe }});
+    
+        // Compute the mean of dwell time
+        var totalDwellTime = dwellTimes.reduce(function (acc, value) {
+        return acc + value;
+        }, 0);
+        var meanDwellTime = totalDwellTime / dwellTimes.length;
+    
+        // Display the mean dwell time in HTML
+        document.write("<p>Mean Dwell Time: " + meanDwellTime + " seconds</p>");
+    </script> 
+
+    <hr>
+    <h5>Frequency of visits depending on the days of the week</h5>
+    <canvas id="userDaysChart" width="400" height="400"></canvas>
+    <script>
+        const userDaysData = {{ week_days | tojson | safe }};
+        const userDaysLabels = Object.keys(userDaysData);
+        const userDaysCount = Object.values(userDaysData);
+
+        const user_days_Chart = new Chart(document.getElementById("userDaysChart"), {
+            type: 'bar',
+            data: {
+                labels: userDaysLabels,
+                datasets: [{
+                    label: 'Number of Interactions',
+                    data: userDaysCount,
+                    backgroundColor: 'green',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+
+    <hr>
+    <h5>Distribution of Browsers</h5>
+    <canvas id="browserChart" width="10" height="10">
+    <script>
+        // Display a pie chart for visitor's preferred browsers
+        const agentData = {{ agent_data | tojson | safe }};
+        
+        const browserLabels = Object.keys(agentData.browsers)
+        const browserCount = Object.values(agentData.browsers)
+
+        const browser_chart = new Chart(document.getElementById("browserChart"), {
+            type: 'pie',
+            data: {
+                labels: browserLabels,
+                datasets: [{
+                    data: browserCount,
+                    backgroundColor: ['red', 'blue', 'green', 'yellow'],
+                }]
+            },
+        });
+    </script>
+    </canvas>  
+    
+    <hr>
+    <h5>Distribution of Platforms (computer/mobile) used</h5>
+    <canvas id="platformChart" width="10" height="10">
+    <script>
+        // Display a pie chart for visitor's preferred platforms
+        const platformLabels = Object.keys(agentData.platforms)
+        const platformCount = Object.values(agentData.platforms)
+
+        const platform_chart = new Chart(document.getElementById("platformChart"), {
+            type: 'pie',
+            data: {
+                labels: platformLabels,
+                datasets: [{
+                    data: platformCount,
+                    backgroundColor: ['blue', 'red', 'yellow', 'green'],
+                }]
+            },
+        });
+    </script>
+    </canvas>
+
+    <hr>
+    <h5>Distribution of Operating Systems used</h5>
+    <canvas id="osChart" width="10" height="10">
+    <script>
+        // Display a pie chart for visitor's preferred operating systems
+        const osLabels = Object.keys(agentData.oss)
+        const osCount = Object.values(agentData.oss)
+
+        const os_chart = new Chart(document.getElementById("osChart"), {
+            type: 'pie',
+            data: {
+                labels: osLabels,
+                datasets: [{
+                    data: osCount,
+                    backgroundColor: ['green', 'red', 'yellow', 'green'],  // Add more colors as needed
+                }]
+            },
+        });
+    </script>
+    </canvas>
+
+    <hr>
+    <h5>Different IPs and visits to the site</h5>
+    {% for ip, counter in users_ip|dictsort(false, 'value') %}
+        <div class="pb-3">
+            <div class="">
+                <span class="text-dark"> ({{ counter }} visits) </span> — IP: {{ ip }}
+            </div>
+        </div>
+    {% endfor %}
+
+    <hr>
+    <h5>Distribution of Cities</h5>
+    <canvas id="cityChart" width="400" height="400"></canvas>
+    <script>
+        
+        const cityData = {{ cities | tojson | safe }};
+        const cityLabels = Object.keys(cityData);
+        const cityCount = Object.values(cityData);
+
+        const city_chart = new Chart(document.getElementById("cityChart"), {
+            type: 'pie',
+            data: {
+                labels: cityLabels,
+                datasets: [{
+                    label: 'Visitor Count',
+                    data: cityCount,
+                    backgroundColor: ['red', 'blue', 'green', 'yellow'],  
+                }]
+            },
+        });
+    </script> 
+
 {% endblock %}
