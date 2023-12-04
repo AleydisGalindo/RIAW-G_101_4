@@ -69,9 +69,10 @@
         });
 
     </script>
-    
     <hr>
-    <h5>Print Python data for verification with graph above...</h5>
+    <button type="button" class="collapsible">Print Python data for verification with graph above...</button>
+    <!-- <h5>Print Python data for verification with graph above...</h5> -->
+    <div class="content">
     {% for doc in visited_docs %}
         <div class="pb-3">
             <div class="">
@@ -90,8 +91,25 @@
             </div>
         </div>
     {% endfor %}
-
+    </div>
+    <script>
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+        
+    for (i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        });
+    }
+    </script>
     <hr>
+
     <h5>Distribution of Algorithms Used</h5>
     <canvas id="queryChart" width="400" height="400"></canvas>
     <script>
@@ -107,7 +125,7 @@
                 datasets: [{
                     label: 'Query Frequency',
                     data: queryCount,
-                    backgroundColor: ['green', 'red', 'blue'],
+                    backgroundColor: ['blue', 'red', 'yellow', 'green', 'purple', 'pink', 'orange'],
                 }]
             },
         });
@@ -228,7 +246,7 @@
                 labels: browserLabels,
                 datasets: [{
                     data: browserCount,
-                    backgroundColor: ['red', 'blue', 'green', 'yellow'],
+                    backgroundColor: ['red', 'blue', 'green', 'yellow', 'purple', 'pink', 'orange'],
                 }]
             },
         });
@@ -249,7 +267,7 @@
                 labels: platformLabels,
                 datasets: [{
                     data: platformCount,
-                    backgroundColor: ['blue', 'red', 'yellow', 'green'],
+                    backgroundColor: ['pink', 'orange', 'purple', 'red', 'blue', 'yellow', 'green'],
                 }]
             },
         });
@@ -270,7 +288,7 @@
                 labels: osLabels,
                 datasets: [{
                     data: osCount,
-                    backgroundColor: ['green', 'red', 'yellow', 'green'],  // Add more colors as needed
+                    backgroundColor: ['purple', 'red', 'yellow', 'green', 'orange', 'pink'],  
                 }]
             },
         });
@@ -303,10 +321,67 @@
                 datasets: [{
                     label: 'Visitor Count',
                     data: cityCount,
-                    backgroundColor: ['red', 'blue', 'green', 'yellow'],  
+                    backgroundColor: ['pink', 'red', 'yellow', 'green', 'purple', 'blue'], 
                 }]
             },
         });
-    </script> 
+    </script>
+    <style>
+        #queryChart { 
+            max-width: 600px;
+            max-height: 400px;
+        }
+
+        #querySizeChart {
+            max-width: 700px;
+            max-height: 500px;
+        }
+
+        #termChart {
+            max-width: 700px;
+            max-height: 500px;
+        }
+
+        #userDaysChart {
+            max-width: 700px;
+            max-height: 500px;
+        }
+
+        #browserChart {
+            max-width: 600px;
+            max-height: 400px;
+        }
+
+        #platformChart {
+            max-width: 600px;
+            max-height: 400px;
+        }
+
+        #osChart {
+            max-width: 600px;
+            max-height: 400px;
+        }
+
+        #cityChart {
+            max-width: 600px;
+            max-height: 400px;
+        }
+
+        .collapsible {
+            background-color: #777;
+            color: white;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .active, .collapsible:hover {
+            background-color: #555;
+        }
+    </style>
 
 {% endblock %}

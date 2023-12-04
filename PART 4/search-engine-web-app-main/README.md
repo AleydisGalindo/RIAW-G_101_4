@@ -1,102 +1,39 @@
-# Search Engine with Web Analytics - skeleton project
-# IRWA Final Project
+# Part4: User Interface and Web Analytics
 
-This projects contains the startup Flask files for developing a web application.
+## Overview
 
-## To download this repo locally
+We have used the simple Python web framework Flask that runs its own development web server to build a search engine to process and rank tweets related to the Russo-Ukrainian war. The code is organized into several parts, each serving a specific purpose.
 
-Open a terminal console and execute:
+Firstly we load the corpus from JSON files, transforming it into a DataFrame, and apply various data cleaning techniques. Then, we call our text search and ranking algorithms which include TF-IDF ranking, custom scoring, and word2vec-based ranking on a corpus of tweets.
+Given our results we then worked on linking all of the `.html` templates together and displaying our statistics through a series of graphs.
 
-```
-cd <your preferred projects root directory>
+## Dependencies
 
-git clone https://github.com/irwa-labs/search-engine-web-app.git
+- **Python:** This script requires Python 3.10.12 to run.
+- **Libraries:** json, datetime, Faker, random, re, nltk, collections, defaultdict, array, math, numpy, spacy, pandas
 
-```
+Ensure the required libraries are installed using appropriate commands, such as pip install nltk and pip install numpy.
 
-
-
-## Starting the Web App
-
+# Download the spaCy model with word embeddings
 ```bash
-python -V
-# Make sure we use Python 3
-
-cd search-engine-web-app
-python web_app.py
-```
-The above will start a web server with the application:
-```
- * Serving Flask app 'web-app' (lazy loading)
- * Environment: production
-   WARNING: This is a development server. Do not use it in a production deployment.
-   Use a production WSGI server instead.
- * Debug mode: off
- * Running on http://127.0.0.1:8088/ (Press CTRL+C to quit)
+python3 -m spacy download en_core_web_md
 ```
 
-Open Web app in your Browser:  
-[http://127.0.0.1:8088/](http://127.0.0.1:8088/) or [http://localhost:8088/](http://localhost:8088/)
+## How to Run
 
+1. **Data Files:** Ensure that you have the required data files in the specified locations.
+   - `Rus_Ukr_war_data.json`: JSON file containing tweet data.
 
-## Virtualenv for the project (first time use)
-### Install virtualenv
-Having different version of libraries for different projects.  
-Solves the elevated privilege issue as virtualenv allows you to install with user permission.
-
-In the project root directory execute:
+2. **Run the Script:** Execute the script in a Python environment typing the console command:
 ```bash
-pip3 install virtualenv
-virtualenv --version
-```
-virtualenv 20.10.0
-
-### Prepare virtualenv for the project
-In the root of the project folder run:
-```bash
-virtualenv .
+`python3 search-engine-web-app-main/web_app.py`
 ```
 
-If you list the contents of the project root directory, you will see that it has created several sub-directories, including a bin folder (Scripts on Windows) that contains copies of both Python and pip. Also, a lib folder will be created by this action.
+## Console Output
 
-The next step is to activate your new virtualenv for the project:
+- Relevant information on the actions taken on the development web server and its input.
 
-```bash
-source bin/activate
-```
+## Additional Notes
 
-or for Windows...
-```cmd
-myvenv\Scripts\activate.bat
-```
-
-This will load the python virtualenv for the project.
-
-### Installing Flask and other packages in your virtualenv
-```bash
-pip install Flask pandas nltk faker
-```
-
-Enjoy!
-
-
-
-
-## Git Help
-After creating the project and code in local computer...
-
-1. Login to GitHub and create a new repo.
-2. Go to the root page of your new repo and note the url from the browser.
-3. Execute the following locally.
-4. 
-```bash
-cd <project root folder>
-git init -b main
-git add . && git commit -m "initial commit"
-git remote add origin <your GitHub repo URL from the browser>
-git push -u origin main
-```
-
-
-
-
+- The script is designed for educational purposes and involves search algorithms applied to a tweet corpus.
+- Ensure the correct paths to data files are provided in the script.

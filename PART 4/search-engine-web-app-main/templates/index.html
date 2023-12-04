@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block page_title %}{{ page_title }}{% endblock %}
 {% block content %}
     <div class="center-container">
         <form class="form-container" method="POST" onSubmit='return validate();' action="/search">
